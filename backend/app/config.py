@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     OPENAI_API_KEY: str = ""
     OPENAI_MODEL: str = "gpt-4.1-mini"
+    OPENAI_PROXY_URL: str = "http://127.0.0.1:7890"
     MINIMAX_API_KEY: str = ""
     MINIMAX_GROUP_ID: str = ""
 

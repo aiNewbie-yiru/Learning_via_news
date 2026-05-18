@@ -23,9 +23,18 @@ class VocabEnhancerService:
         self.openai_api_key = settings.OPENAI_API_KEY
         self.openai_model = settings.OPENAI_MODEL
         self.openai_base_url = "https://api.openai.com/v1/chat/completions"
+        self.openai_proxy_url = settings.OPENAI_PROXY_URL
 
     def _has_openai_key(self) -> bool:
         return bool(self.openai_api_key and not self.openai_api_key.startswith("your-"))
+
+    def _get_openai_proxies(self):
+        if not self.openai_proxy_url:
+            return None
+        return {
+            "http": self.openai_proxy_url,
+            "https": self.openai_proxy_url,
+        }
 
     def _create_openai_json_completion(self, system_prompt: str, user_prompt: str, max_tokens: int = 500) -> Dict[str, Any]:
         if not self._has_openai_key():
@@ -48,6 +57,7 @@ class VocabEnhancerService:
                 "temperature": 0.2,
             },
             timeout=45,
+            proxies=self._get_openai_proxies(),
         )
         try:
             response.raise_for_status()
