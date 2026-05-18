@@ -169,7 +169,7 @@ Return ONLY the JSON, no extra text."""
             }
         except Exception as e:
             logger.error("OpenAI vocab enhancer error for '%s': %s", word, e)
-            return self._get_fallback_word_with_first_example(word, difficulty, extracted_example)
+            raise RuntimeError(f"OpenAI vocab enhancer failed for '{word}'") from e
 
     def enhance_phrase(self, phrase: str, meaning: str = None, article_context: str = None) -> Dict[str, Any]:
         if not self._has_openai_key():
@@ -211,7 +211,7 @@ Return ONLY the JSON, no extra text."""
             }
         except Exception as e:
             logger.error("OpenAI phrase enhancer error for '%s': %s", phrase, e)
-            return self._get_fallback_phrase(phrase, meaning)
+            raise RuntimeError(f"OpenAI phrase enhancer failed for '{phrase}'") from e
 
     def _get_fallback_word(self, word: str, difficulty: str) -> Dict[str, Any]:
         # 通用释义模板（不包含目标词，避免生成不自然的内容）

@@ -3,6 +3,7 @@ import sys
 
 from app.models.database import SessionLocal, Article, Word, Phrase
 from app.services.scheduler import process_article_vocabulary
+from check_vocab_api import main as check_vocab_api
 
 
 def parse_article_targets(targets):
@@ -84,6 +85,11 @@ def main() -> int:
 
     if not article_ids:
         print("No article IDs provided")
+        return 1
+
+    print("Checking vocabulary API before deleting existing vocabulary...")
+    if check_vocab_api() != 0:
+        print("Vocabulary API check failed. Existing vocabulary was not changed.")
         return 1
 
     failures = 0

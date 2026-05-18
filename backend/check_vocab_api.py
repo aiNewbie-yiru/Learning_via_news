@@ -5,11 +5,15 @@ from app.services.vocab_enhancer import FALLBACK_DEFINITIONS, VocabEnhancerServi
 
 def main() -> int:
     service = VocabEnhancerService()
-    result = service.enhance_word(
-        "interim",
-        "CET6",
-        article_context="The government has hit an interim target for speeding up hospital treatment in England.",
-    )
+    try:
+        result = service.enhance_word(
+            "interim",
+            "CET6",
+            article_context="The government has hit an interim target for speeding up hospital treatment in England.",
+        )
+    except Exception as exc:
+        print(f"ERROR: vocabulary enhancer API call failed: {exc}")
+        return 1
 
     print(result)
 
