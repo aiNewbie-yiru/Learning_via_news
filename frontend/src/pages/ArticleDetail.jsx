@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import CommentsSection from '../components/CommentsSection'
+import { apiFetch } from '../api'
 
 function ArticleDetail({ article: propArticle }) {
     const { id } = useParams()
@@ -12,7 +13,7 @@ function ArticleDetail({ article: propArticle }) {
 
     useEffect(() => {
         if (!propArticle && id) {
-            fetch(`/api/articles/${id}`)
+            apiFetch(`/api/articles/${id}`)
                 .then(res => res.json())
                 .then(data => {
                     setArticle(data)
@@ -28,8 +29,8 @@ function ArticleDetail({ article: propArticle }) {
 
     const loadFavorites = async () => {
         const [wordsRes, phrasesRes] = await Promise.all([
-            fetch('/api/favorites/words'),
-            fetch('/api/favorites/phrases')
+            apiFetch('/api/favorites/words'),
+            apiFetch('/api/favorites/phrases')
         ])
         const words = await wordsRes.json()
         const phrases = await phrasesRes.json()
@@ -39,10 +40,10 @@ function ArticleDetail({ article: propArticle }) {
 
     const handleFavoriteWord = async (wordId, wordText) => {
         if (favoritedWords.has(wordText)) {
-            const favWord = await fetch('/api/favorites/words').then(r => r.json())
+            const favWord = await apiFetch('/api/favorites/words').then(r => r.json())
             const toRemove = favWord.find(w => w.word === wordText)
             if (toRemove) {
-                await fetch(`/api/favorites/words/${toRemove.id}`, { method: 'DELETE' })
+                await apiFetch(`/api/favorites/words/${toRemove.id}`, { method: 'DELETE' })
                 setFavoritedWords(prev => {
                     const next = new Set(prev)
                     next.delete(wordText)
@@ -50,17 +51,17 @@ function ArticleDetail({ article: propArticle }) {
                 })
             }
         } else {
-            await fetch(`/api/favorites/words/${wordId}`, { method: 'POST' })
+            await apiFetch(`/api/favorites/words/${wordId}`, { method: 'POST' })
             setFavoritedWords(prev => new Set([...prev, wordText]))
         }
     }
 
     const handleFavoritePhrase = async (phraseId, phraseText) => {
         if (favoritedPhrases.has(phraseText)) {
-            const favPhrases = await fetch('/api/favorites/phrases').then(r => r.json())
+            const favPhrases = await apiFetch('/api/favorites/phrases').then(r => r.json())
             const toRemove = favPhrases.find(p => p.phrase === phraseText)
             if (toRemove) {
-                await fetch(`/api/favorites/phrases/${toRemove.id}`, { method: 'DELETE' })
+                await apiFetch(`/api/favorites/phrases/${toRemove.id}`, { method: 'DELETE' })
                 setFavoritedPhrases(prev => {
                     const next = new Set(prev)
                     next.delete(phraseText)
@@ -68,7 +69,7 @@ function ArticleDetail({ article: propArticle }) {
                 })
             }
         } else {
-            await fetch(`/api/favorites/phrases/${phraseId}`, { method: 'POST' })
+            await apiFetch(`/api/favorites/phrases/${phraseId}`, { method: 'POST' })
             setFavoritedPhrases(prev => new Set([...prev, phraseText]))
         }
     }
@@ -83,10 +84,18 @@ function ArticleDetail({ article: propArticle }) {
     if (!article) return <div className="error"><h3>Article not found</h3><p>The article you're looking for doesn't exist.</p><button onClick={() => window.history.back()}>Go back</button></div>
 
     const handleHideWord = async (wordId) => {
-        await fetch(`/api/articles/words/${wordId}/hide`, { method: 'POST' })
+        await apiFetch(`/api/articles/words/${wordId}/hide`, { method: 'POST' })
         setArticle(prev => ({
             ...prev,
             words: prev.words.filter(w => w.id !== wordId)
+        }))
+    }
+
+    const handleHidePhrase = async (phraseId) => {
+        await apiFetch(`/api/articles/phrases/${phraseId}/hide`, { method: 'POST' })
+        setArticle(prev => ({
+            ...prev,
+            phrases: prev.phrases.filter(p => p.id !== phraseId)
         }))
     }
 
@@ -228,6 +237,16 @@ function ArticleDetail({ article: propArticle }) {
                                             >
                                                 <svg viewBox="0 0 24 24" fill={favoritedPhrases.has(phrase.phrase) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
                                                     <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                                                </svg>
+                                            </button>
+                                            <button
+                                                className="hide-btn"
+                                                onClick={() => handleHidePhrase(phrase.id)}
+                                                title="Hide this phrase"
+                                            >
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                                                    <line x1="6" y1="6" x2="18" y2="18"></line>
                                                 </svg>
                                             </button>
                                         </div>

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react'
+import { apiFetch, getClientNickname, setClientNickname } from '../api'
 
 function CommentsSection({ articleId }) {
   const [comments, setComments] = useState([])
   const [newComment, setNewComment] = useState('')
-  const [userName, setUserName] = useState('')
+  const [userName, setUserName] = useState(getClientNickname())
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
@@ -13,7 +14,7 @@ function CommentsSection({ articleId }) {
 
   const fetchComments = async () => {
     try {
-      const res = await fetch(`/api/comments/article/${articleId}`)
+      const res = await apiFetch(`/api/comments/article/${articleId}`)
       const data = await res.json()
       setComments(data)
     } catch (err) {
@@ -29,13 +30,17 @@ function CommentsSection({ articleId }) {
 
     setSubmitting(true)
     try {
-      const res = await fetch('/api/comments/', {
+      if (userName.trim()) {
+        setClientNickname(userName)
+      }
+
+      const res = await apiFetch('/api/comments/', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           article_id: articleId,
           content: newComment,
-          user_name: userName || 'Anonymous'
+          user_name: userName
         })
       })
       const data = await res.json()

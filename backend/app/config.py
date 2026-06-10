@@ -12,14 +12,26 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = f"sqlite:///{DATA_DIR}/english_learning.db"
 
+    DEEPSEEK_API_KEY: str = ""
+    DEEPSEEK_MODEL: str = "deepseek-v4-flash"
+    DEEPSEEK_BASE_URL: str = "https://api.deepseek.com"
+
     OPENAI_API_KEY: str = ""
-    OPENAI_MODEL: str = "gpt-4.1-mini"
+    OPENAI_MODEL: str = "deepseek-v4-flash"
+    OPENAI_BASE_URL: str = "https://api.deepseek.com"
     OPENAI_PROXY_URL: str = "http://127.0.0.1:7890"
     MINIMAX_API_KEY: str = ""
     MINIMAX_GROUP_ID: str = ""
+    MINIMAX_MODEL: str = "minimax-m2.7"
+    MINIMAX_BASE_URL: str = "https://api.minimax.chat/v1/text/chatcompletion_v2"
 
     NEWS_API_KEY: str = ""
     NEWS_API_ENABLED: bool = False
+    NEWS_PROXY_URL: str = "http://127.0.0.1:7890"
+    DAILY_ARTICLE_TARGET: int = 5
+    STARTUP_CATCHUP_ENABLED: bool = True
+    MIN_ARTICLE_CONTENT_LENGTH: int = 500
+    MIN_ARTICLE_WORD_COUNT: int = 8
 
     VOCAB_WORD_LIMIT: int = 15
     VOCAB_PHRASE_LIMIT: int = 3

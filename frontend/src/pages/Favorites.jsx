@@ -1,4 +1,21 @@
 import React, { useState, useEffect } from 'react'
+import { apiFetch } from '../api'
+
+const compactChineseMeaning = (value) => (value || '')
+  .replace(/^\s*(原文义|语境义|常用义|中文释义|释义|意思|含义)[:：]\s*/i, '')
+  .replace(/\s+/g, '')
+  .trim()
+
+const getDisplayDefinitionCn = (word) => {
+  const contextMeaning = compactChineseMeaning(word.context_definition_cn)
+  const commonMeaning = compactChineseMeaning(word.common_definition_cn)
+
+  if (contextMeaning && commonMeaning && contextMeaning !== commonMeaning) {
+    return `${contextMeaning}；${commonMeaning}`
+  }
+
+  return contextMeaning || commonMeaning || compactChineseMeaning(word.definition_cn)
+}
 
 function Favorites() {
   const [words, setWords] = useState([])
@@ -8,24 +25,34 @@ function Favorites() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/favorites/words')
-      .then(res => res.json())
-      .then(data => setWords(data))
-    
-    fetch('/api/favorites/phrases')
-      .then(res => res.json())
-      .then(data => setPhrases(data))
-    
-    fetch('/api/favorites/stats')
-      .then(res => res.json())
-      .then(data => setStats(data))
-    
-    setLoading(false)
+    const loadFavorites = async () => {
+      try {
+        const [wordsRes, phrasesRes, statsRes] = await Promise.all([
+          apiFetch('/api/favorites/words'),
+          apiFetch('/api/favorites/phrases'),
+          apiFetch('/api/favorites/stats')
+        ])
+
+        const [wordsData, phrasesData, statsData] = await Promise.all([
+          wordsRes.json(),
+          phrasesRes.json(),
+          statsRes.json()
+        ])
+
+        setWords(wordsData)
+        setPhrases(phrasesData)
+        setStats(statsData)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadFavorites()
   }, [])
 
   const handleRemoveWord = async (id, word) => {
     if (confirm(`Are you sure you want to remove "${word}" from favorites?`)) {
-      await fetch(`/api/favorites/words/${id}`, { method: 'DELETE' })
+      await apiFetch(`/api/favorites/words/${id}`, { method: 'DELETE' })
       setWords(words.filter(w => w.id !== id))
       alert(`"${word}" removed from favorites`)
     }
@@ -33,7 +60,7 @@ function Favorites() {
 
   const handleRemovePhrase = async (id, phrase) => {
     if (confirm(`Are you sure you want to remove "${phrase}" from favorites?`)) {
-      await fetch(`/api/favorites/phrases/${id}`, { method: 'DELETE' })
+      await apiFetch(`/api/favorites/phrases/${id}`, { method: 'DELETE' })
       setPhrases(phrases.filter(p => p.id !== id))
       alert(`"${phrase}" removed from favorites`)
     }
@@ -93,14 +120,17 @@ function Favorites() {
               <div key={word.id} className="word-card">
                 <div className="word-header">
                   <span className="word-text">{word.word}</span>
-                  <span className={`difficulty-badge ${word.difficulty_level.toLowerCase()}`}>
-                    {word.difficulty_level}
+                  <span className={`difficulty-badge ${(word.difficulty_level || 'cet6').toLowerCase()}`}>
+                    {word.difficulty_level || 'CET6'}
                   </span>
                   {word.part_of_speech && (
                     <span className="pos-badge">{word.part_of_speech}</span>
                   )}
                 </div>
-                <p className="word-definition">{word.definition}</p>
+                {word.definition && <p className="word-definition">{word.definition}</p>}
+                {getDisplayDefinitionCn(word) && (
+                  <p className="word-definition-cn">{getDisplayDefinitionCn(word)}</p>
+                )}
                 <p className="word-example">
                   <strong>Example:</strong> {word.example_sentence}
                 </p>

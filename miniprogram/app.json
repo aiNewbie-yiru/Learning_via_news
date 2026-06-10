@@ -1,0 +1,14 @@
+{
+  "pages": [
+    "pages/today/today"
+  ],
+  "window": {
+    "navigationBarTitleText": "English Learning",
+    "navigationBarBackgroundColor": "#ffffff",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f6f7fb"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
+

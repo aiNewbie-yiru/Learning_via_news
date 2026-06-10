@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.models import init_db
-from app.routers import articles_router, comments_router, chat_router, favorites_router
+from app.routers import articles_router, comments_router, chat_router, favorites_router, users_router
 from app.services import start_scheduler, stop_scheduler
 
 @asynccontextmanager
@@ -32,6 +32,7 @@ app.include_router(articles_router)
 app.include_router(comments_router)
 app.include_router(chat_router)
 app.include_router(favorites_router)
+app.include_router(users_router)
 
 @app.get("/")
 def root():

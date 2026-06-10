@@ -1,4 +1,4 @@
-from app.models.database import Base, Article, Word, Phrase, Comment, HiddenWord, get_db, init_db, engine, SessionLocal
+from app.models.database import Base, Article, Word, WordLookupCache, Phrase, Comment, User, HiddenWord, HiddenPhrase, get_db, init_db, engine, SessionLocal
 from app.models.schemas import (
     ArticleBase, ArticleCreate, ArticleResponse, ArticleListResponse,
     WordBase, WordCreate, WordResponse,
@@ -8,7 +8,7 @@ from app.models.schemas import (
 )
 
 __all__ = [
-    "Base", "Article", "Word", "Phrase", "Comment", "HiddenWord", "get_db", "init_db", "engine", "SessionLocal",
+    "Base", "Article", "Word", "WordLookupCache", "Phrase", "Comment", "User", "HiddenWord", "HiddenPhrase", "get_db", "init_db", "engine", "SessionLocal",
     "ArticleBase", "ArticleCreate", "ArticleResponse", "ArticleListResponse",
     "WordBase", "WordCreate", "WordResponse",
     "PhraseBase", "PhraseCreate", "PhraseResponse",

@@ -1,0 +1,37 @@
+<view class="page">
+  <view wx:if="{{loading}}" class="state">Loading today's learning page...</view>
+  <view wx:elif="{{error}}" class="state error">
+    <text>{{error}}</text>
+    <button bindtap="loadTodayArticles">Retry</button>
+  </view>
+  <view wx:elif="{{!selectedArticle}}" class="state">No articles available.</view>
+
+  <view wx:else>
+    <scroll-view class="topic-tabs" scroll-x>
+      <button
+        wx:for="{{articles}}"
+        wx:key="id"
+        class="topic-tab {{item.id === selectedArticle.id ? 'active' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="selectArticle"
+      >
+        {{item.topic_label || item.title}}
+      </button>
+    </scroll-view>
+
+    <view class="article">
+      <text class="source">{{selectedArticle.source}}</text>
+      <text class="title">{{selectedArticle.title}}</text>
+      <text class="content">{{selectedArticle.content}}</text>
+    </view>
+
+    <view class="vocab">
+      <text class="section-title">Words</text>
+      <view wx:for="{{selectedArticle.words}}" wx:key="id" class="word-card">
+        <text class="word">{{item.word}}</text>
+        <text class="definition">{{item.context_definition_cn || item.definition_cn || item.definition}}</text>
+      </view>
+    </view>
+  </view>
+</view>
+

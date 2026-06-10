@@ -1,6 +1,57 @@
 import re
 from collections import Counter
+from pathlib import Path
 from typing import List, Dict, Tuple
+
+
+def load_resource_word_list(filename: str) -> set:
+    """Load one English word per line, or the first English token from tabbed lines."""
+    path = Path(__file__).resolve().parent.parent / "resources" / filename
+    if not path.exists():
+        return set()
+
+    words = set()
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            match = re.match(r"\s*([A-Za-z]+(?:'[A-Za-z]+)?)\b", line)
+            if match:
+                words.add(match.group(1).lower())
+    return words
+
+
+def get_basic_candidate_forms(word: str) -> set:
+    """Return conservative base-form candidates for common English inflections."""
+    candidates = set()
+    word = word.lower().strip()
+    if len(word) <= 3:
+        return candidates
+
+    if word.endswith("ies") and len(word) > 4:
+        candidates.add(word[:-3] + "y")
+    if word.endswith("es") and len(word) > 4:
+        candidates.add(word[:-2])
+    if word.endswith("s") and len(word) > 3:
+        candidates.add(word[:-1])
+    if word.endswith("ied") and len(word) > 4:
+        candidates.add(word[:-3] + "y")
+    if word.endswith("ed") and len(word) > 4:
+        candidates.add(word[:-2])
+        candidates.add(word[:-1])
+        if len(word) > 5 and word[-3] == word[-4]:
+            candidates.add(word[:-3])
+    if word.endswith("ing") and len(word) > 5:
+        candidates.add(word[:-3])
+        candidates.add(word[:-3] + "e")
+        if len(word) > 6 and word[-4] == word[-5]:
+            candidates.add(word[:-4])
+    if word.endswith("ly") and len(word) > 5:
+        candidates.add(word[:-2])
+    if word.endswith("er") and len(word) > 4:
+        candidates.add(word[:-2])
+    if word.endswith("est") and len(word) > 5:
+        candidates.add(word[:-3])
+
+    return {candidate for candidate in candidates if len(candidate) >= 3}
 
 # 基础词汇 - 初中及以下水平（包含最常见的3000词）
 BASIC_WORDS = set([
@@ -47,6 +98,11 @@ BASIC_WORDS = set([
     'outside', 'over', 'past', 'since', 'through', 'throughout', 'till', 'to',
     'toward', 'under', 'until', 'up', 'upon', 'with', 'within', 'without'
 ])
+
+# Temporary machine-readable proxy for the compulsory-education vocabulary floor.
+# Product rule: replace this with a hand-cleaned machine-readable list from the
+# official 2022 curriculum when available. Do not use NGSL or high-school lists.
+BASIC_WORDS.update(load_resource_word_list("compulsory_basic_words_junior_proxy.txt"))
 
 # 四级词汇 (CET4) - 在Basic基础上扩展
 # 确保 Basic ⊂ CET4，移除与Basic重叠的词后共1423个专有词
@@ -812,6 +868,30 @@ GRE_WORDS = TOEFL_WORDS.union(set([
     'vociferous', 'voluble', 'voracious', 'warranted', 'whimsical', 'zephyr'
 ]))
 
+CET4_ONLY_WORDS = CET4_WORDS - BASIC_WORDS
+CET6_ONLY_WORDS = CET6_WORDS - CET4_WORDS - BASIC_WORDS
+TOEFL_ONLY_WORDS = TOEFL_WORDS - CET6_WORDS - CET4_WORDS - BASIC_WORDS
+GRE_ONLY_WORDS = GRE_WORDS - TOEFL_WORDS - CET6_WORDS - CET4_WORDS - BASIC_WORDS
+
+NEWS_WORD_DIFFICULTY_OVERRIDES = {
+    "ally": "CET6",
+    "bodycam": "CET6",
+    "chancellor": "CET6",
+    "drone": "CET6",
+    "enrage": "CET6",
+    "fatal": "CET6",
+    "footage": "CET6",
+    "handcuff": "CET6",
+    "hatred": "CET6",
+    "intensify": "CET6",
+    "missile": "CET6",
+    "reiterate": "CET6",
+    "self-hatred": "TOEFL",
+    "stab": "CET6",
+    "tragic": "CET6",
+    "unprecedented": "TOEFL",
+}
+
 # 常用短语和习语
 PHRASES = [
     'come to terms with', 'take into account', 'make sense of',
@@ -1117,6 +1197,32 @@ IDIOMS = [
     'yours truly', 'youthful', 'zero in on', 'zip your lip'
 ]
 
+# 新闻阅读高频短语白名单
+def load_news_phrase_whitelist() -> List[str]:
+    """从 docs/NEWS_PHRASE_WHITELIST.md 加载新闻短语白名单。"""
+    project_root = Path(__file__).resolve().parents[3]
+    whitelist_path = project_root / "docs" / "NEWS_PHRASE_WHITELIST.md"
+    if not whitelist_path.exists():
+        return []
+
+    phrases = []
+    in_phrase_section = False
+    for line in whitelist_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line.startswith("## "):
+            in_phrase_section = bool(re.match(r"^## [1-4]\.", line))
+            continue
+        if not in_phrase_section:
+            continue
+        if not line.startswith("- "):
+            continue
+        phrase = line[2:].strip().lower()
+        if len(phrase.split()) >= 2:
+            phrases.append(phrase)
+    return phrases
+
+NEWS_PHRASE_WHITELIST = load_news_phrase_whitelist()
+
 # 词根词缀数据库
 WORD_ROOTS = {
     'un-': {'meaning': '不，否定', 'examples': ['unhappy', 'unable', 'unknown']},
@@ -1237,15 +1343,28 @@ class WordExtractor:
         返回: Basic, CET4, CET6, TOEFL 或 None（未分类）
         """
         word_lower = word.lower().strip()
+        candidate_forms = {word_lower, *get_basic_candidate_forms(word_lower)}
         
-        if word_lower in BASIC_WORDS:
+        if candidate_forms & BASIC_WORDS:
             return "Basic"
-        elif word_lower in CET4_WORDS:
+
+        override_difficulties = [
+            NEWS_WORD_DIFFICULTY_OVERRIDES[candidate]
+            for candidate in candidate_forms
+            if candidate in NEWS_WORD_DIFFICULTY_OVERRIDES
+        ]
+        if override_difficulties:
+            difficulty_order = {"CET4": 1, "CET6": 2, "TOEFL": 3, "GRE": 4}
+            return max(override_difficulties, key=lambda level: difficulty_order[level])
+
+        if candidate_forms & CET4_ONLY_WORDS:
             return "CET4"
-        elif word_lower in CET6_WORDS:
+        elif candidate_forms & CET6_ONLY_WORDS:
             return "CET6"
-        elif word_lower in TOEFL_WORDS:
+        elif candidate_forms & TOEFL_ONLY_WORDS:
             return "TOEFL"
+        elif candidate_forms & GRE_ONLY_WORDS:
+            return "GRE"
         return None
 
     def extract_words(self, text: str, min_difficulty: str = "CET4") -> List[Dict]:
@@ -1255,7 +1374,7 @@ class WordExtractor:
         :param min_difficulty: 最低难度筛选 (Basic, CET4, CET6, TOEFL)
         :return: 单词列表，包含单词、难度、出现次数、语域和词根词缀
         """
-        words = re.findall(r'\b[a-zA-Z]{3,}\b', text.lower())
+        words = re.findall(r'\b[a-zA-Z]{3,}(?:-[a-zA-Z]{3,})*\b', text.lower())
         word_counts = Counter(words)
         
         difficulty_order = {"Basic": 0, "CET4": 1, "CET6": 2, "TOEFL": 3, "GRE": 4}
@@ -1298,24 +1417,36 @@ class WordExtractor:
         :param text: 输入文本
         :return: 短语列表
         """
-        text_lower = text.lower()
-        found_phrases = []
-        
-        for phrase in PHRASES:
-            if phrase in text_lower:
-                found_phrases.append({
-                    "phrase": phrase,
-                    "type": "phrase"
-                })
-        
-        for idiom in IDIOMS:
-            if idiom in text_lower:
-                found_phrases.append({
-                    "phrase": idiom,
-                    "type": "idiom"
-                })
-        
-        return found_phrases
+        found = {}
+
+        phrase_sources = [
+            (PHRASES, "phrase"),
+            (NEWS_PHRASE_WHITELIST, "phrase"),
+            (IDIOMS, "idiom"),
+        ]
+
+        for phrase_list, phrase_type in phrase_sources:
+            for phrase in phrase_list:
+                normalized_phrase = " ".join(phrase.lower().split())
+                if len(normalized_phrase.split()) < 2:
+                    continue
+
+                pattern = r'\b' + r'\s+'.join(
+                    re.escape(part) for part in normalized_phrase.split()
+                ) + r'\b'
+
+                if re.search(pattern, text, flags=re.IGNORECASE):
+                    existing = found.get(normalized_phrase)
+                    if not existing or existing["type"] != "idiom":
+                        found[normalized_phrase] = {
+                            "phrase": normalized_phrase,
+                            "type": phrase_type
+                        }
+
+        return sorted(
+            found.values(),
+            key=lambda item: (-len(item["phrase"].split()), item["phrase"])
+        )
 
     def analyze_text(self, text: str, min_difficulty: str = "CET4") -> Dict:
         """

@@ -151,6 +151,8 @@ difficulty_order = {"Basic": 0, "CET4": 1, "CET6": 2, "TOEFL": 3}
 ### 5.1 词汇分级标准
 - [ ] 某个词是否属于 Basic/CET4/CET6 的判断标准是什么？（当前为硬编码列表）
 - [ ] 是否需要从公开词库文件加载而非硬编码？
+- [x] Basic 词库应使用“小学 + 初中 / 义务教育阶段英语词汇”。当前已接入机器可读初中词表代理资源 `backend/app/resources/compulsory_basic_words_junior_proxy.txt`；官方《义务教育英语课程标准（2022年版）》PDF 为扫描版，后续可人工整理官方词表后替换该代理资源。不要使用 NGSL 这类通用高频词表，也不要使用高中词表作为 Basic，否则会把 `academic`、`abnormal`、`abortion` 等高中或更高语域词错误下沉为 Basic。
+- [x] 分级判断按“专属难度层”处理：`CET4 = 四级词表 - Basic`，`CET6 = 六级词表 - CET4 - Basic`，`TOEFL = 托福词表 - CET6 - CET4 - Basic`。展示和提取时使用专属难度，避免累计总词表导致简单词被误标。
 
 ### 5.2 提取阈值
 - [ ] `min_difficulty` 的默认值应该是什么？
@@ -159,6 +161,13 @@ difficulty_order = {"Basic": 0, "CET4": 1, "CET6": 2, "TOEFL": 3}
 ### 5.3 词库维护
 - [ ] 新增词汇的标准流程是什么？
 - [ ] 谁负责维护词库列表？
+
+### 5.4 词汇释义生成
+- [ ] 调整 `enhance_word()` 的 prompt：`definition_cn` 不能再要求 “Chinese translation of the definition”，应直接生成中文短释义。
+- [ ] `definition` 保留为短英文学习释义，避免复杂词典式长句。
+- [ ] 中文释义优先输出原文语境义；如有一词多义，只额外输出 1 个最高频其他义项。
+- [ ] 新增 words 字段：`context_definition_cn`（原文语境义）和 `common_definition_cn`（最高频其他义）。
+- [ ] 前端展示合并后的简洁释义，例如：`clear，清理，清除；清楚的`，不要显示“原文义”“常用义”等标签文字。
 
 ---
 

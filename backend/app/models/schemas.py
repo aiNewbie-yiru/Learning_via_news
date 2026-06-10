@@ -6,6 +6,8 @@ class WordBase(BaseModel):
     word: str
     definition: Optional[str] = None
     definition_cn: Optional[str] = None
+    context_definition_cn: Optional[str] = None
+    common_definition_cn: Optional[str] = None
     example_sentence: Optional[str] = None  # 第一例句：从文章原文抓取
     example_cn: Optional[str] = None
     example_source: Optional[str] = None
@@ -71,6 +73,8 @@ class ArticleCreate(ArticleBase):
 
 class ArticleResponse(ArticleBase):
     id: int
+    topic_label: Optional[str] = None
+    topic_label_cn: Optional[str] = None
     published_at: datetime
     created_at: datetime
     words: List[WordResponse] = []
@@ -83,6 +87,8 @@ class ArticleResponse(ArticleBase):
 class ArticleListResponse(BaseModel):
     id: int
     title: str
+    topic_label: Optional[str] = None
+    topic_label_cn: Optional[str] = None
     summary: Optional[str] = None
     source: Optional[str] = None
     published_at: datetime

@@ -1,4 +1,3 @@
-import os
 import feedparser
 import requests
 from bs4 import BeautifulSoup
@@ -8,17 +7,23 @@ import random
 
 from app.config import settings
 
-PROXY = os.getenv("HTTPS_PROXY") or os.getenv("https_proxy") or os.getenv("HTTP_PROXY") or os.getenv("http_proxy")
 
 class NewsScraper:
     def __init__(self):
         self.sources = settings.NEWS_SOURCES
         self.news_api_key = settings.NEWS_API_KEY
         self.news_api_enabled = settings.NEWS_API_ENABLED
+        proxy_url = settings.NEWS_PROXY_URL.strip()
         self.proxies = {
-            "http": PROXY,
-            "https": PROXY
-        } if PROXY else None
+            "http": proxy_url,
+            "https": proxy_url
+        } if proxy_url else None
+
+    def _get(self, url: str, **kwargs):
+        session = requests.Session()
+        if not self.proxies:
+            session.trust_env = False
+        return session.get(url, proxies=self.proxies, **kwargs)
 
     def fetch_news_api(self, category: str = "general") -> List[Dict]:
         if not self.news_api_key or not self.news_api_enabled:
@@ -33,7 +38,7 @@ class NewsScraper:
                 "pageSize": 10
             }
             
-            response = requests.get(url, params=params, proxies=self.proxies, timeout=15)
+            response = self._get(url, params=params, timeout=15)
             response.raise_for_status()
             
             data = response.json()
@@ -61,7 +66,7 @@ class NewsScraper:
                 "Accept": "application/rss+xml, application/xml"
             }
             
-            response = requests.get(url, headers=headers, proxies=self.proxies, timeout=15)
+            response = self._get(url, headers=headers, timeout=15)
             response.raise_for_status()
             
             feed = feedparser.parse(response.content)
@@ -109,7 +114,7 @@ class NewsScraper:
             headers = {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
             }
-            response = requests.get(url, headers=headers, proxies=self.proxies, timeout=15)
+            response = self._get(url, headers=headers, timeout=15)
             response.raise_for_status()
 
             soup = BeautifulSoup(response.content, "lxml")

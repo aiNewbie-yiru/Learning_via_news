@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { apiFetch } from '../api'
 
 function Review() {
   const [reviewItems, setReviewItems] = useState([])
@@ -15,7 +16,7 @@ function Review() {
 
   const loadReviewItems = async () => {
     setLoading(true)
-    const response = await fetch(`/api/favorites/review?item_type=${reviewType}&limit=10`)
+    const response = await apiFetch(`/api/favorites/review?item_type=${reviewType}&limit=10`)
     const data = await response.json()
     setReviewItems(data)
     setCurrentIndex(0)
@@ -31,7 +32,7 @@ function Review() {
 
   const handleMarkReviewed = async (correct) => {
     const currentItem = reviewItems[currentIndex]
-    await fetch(`/api/favorites/review/${currentItem.id}`, {
+    await apiFetch(`/api/favorites/review/${currentItem.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ item_type: currentItem.type })

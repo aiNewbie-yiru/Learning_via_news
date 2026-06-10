@@ -44,7 +44,9 @@
 | article_id | Integer (FK) | 关联文章 ID |
 | word | String(100) | 单词（小写） |
 | definition | Text | 英文定义 |
-| definition_cn | Text | 中文翻译 |
+| definition_cn | Text | 中文短释义（面向用户展示，不是英文 definition 的机翻） |
+| context_definition_cn | Text | **计划新增**：原文语境下的中文义项 |
+| common_definition_cn | Text | **计划新增**：一词多义时最高频的其他中文义项 |
 | example_sentence | Text | **第一例句**：从新闻原文抓取 |
 | example_cn | Text | 第一例句中文翻译 |
 | example_source | String(200) | 例句来源 |

@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
+import { apiFetch } from '../api'
 
 function ArticleList() {
   const [articles, setArticles] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/articles')
+    apiFetch('/api/articles')
       .then(res => res.json())
       .then(data => {
         setArticles(data)

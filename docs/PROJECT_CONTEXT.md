@@ -9,134 +9,197 @@ cd /Users/hljy/Documents/trae_projects/english_learning
 ./start.sh
 ```
 
-**start.sh 做了什么**:
-1. 启动 backend: `cd backend && venv/bin/python run.py`
-2. 启动 frontend: `cd frontend && npm run dev`
-3. 设置代理: `HTTPS_PROXY=http://127.0.0.1:7890`
+当前开发环境也可以分别启动：
+
+```bash
+cd backend
+./venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+cd frontend
+npm run dev
+```
 
 ### 访问地址
 
 - 前端: http://localhost:3000
-- 后端 API: http://localhost:8000
-- API 文档: http://localhost:8000/docs
+- 后端 API: http://127.0.0.1:8000
+- API 文档: http://127.0.0.1:8000/docs
 
 ---
 
-## 2. 项目结构
+## 2. 当前产品形态
 
+首页是“今日文章学习页”，不是文章选择页。
+
+```text
+顶部：今日 5 篇文章的 topic 标签
+左侧：当前文章正文 + AI tutor
+右侧：当前文章 Words / Phrases
 ```
+
+Topic 标签字段：
+
+- `Article.topic_label`: 2-3 个英文词
+- `Article.topic_label_cn`: 中文 `#话题` 标签，`#` 后不超过 4 个汉字
+
+首页请求：
+
+```http
+GET /api/articles/compare?limit=5
+```
+
+只返回今天且已经处理过词汇的文章，不再混入历史文章或 sample article。
+
+---
+
+## 3. 项目结构
+
+```text
 english_learning/
-├── SPEC.md              # 产品需求文档
-├── start.sh             # 启动脚本
+├── start.sh
 ├── backend/
-│   ├── run.py           # 后端入口
-│   ├── requirements.txt # Python 依赖
-│   ├── .env             # 环境变量（包含 API keys）
+│   ├── run.py
+│   ├── requirements.txt
+│   ├── .env
 │   └── app/
-│       ├── main.py      # FastAPI 应用定义
-│       ├── config.py    # 配置（Settings）
-│       ├── routers/     # API 路由
-│       │   ├── articles.py   # 文章相关 API
-│       │   ├── favorites.py   # 收藏相关 API
-│       │   ├── chat.py       # AI 聊天 API
-│       │   └── comments.py    # 评论 API
+│       ├── main.py
+│       ├── config.py
+│       ├── routers/
+│       │   ├── articles.py
+│       │   ├── favorites.py
+│       │   ├── chat.py
+│       │   └── comments.py
 │       ├── models/
-│       │   ├── database.py   # SQLAlchemy 模型
-│       │   └── schemas.py   # Pydantic schemas
+│       │   ├── database.py
+│       │   └── schemas.py
 │       └── services/
-│           ├── news_scraper.py   # 新闻抓取
-│           ├── word_extractor.py # 词汇提取
-│           ├── vocab_enhancer.py # AI 词汇增强
-│           ├── ai_chat.py        # AI 聊天
-│           └── scheduler.py      # 定时任务
+│           ├── news_scraper.py
+│           ├── word_extractor.py
+│           ├── vocab_enhancer.py
+│           ├── ai_chat.py
+│           └── scheduler.py
 ├── frontend/
 │   ├── package.json
-│   ├── vite.config.js   # 代理配置
+│   ├── vite.config.js
 │   └── src/
 │       ├── App.jsx
+│       ├── App.css
+│       ├── components/CommentsSection.jsx
 │       └── pages/
 └── docs/
-    ├── PRD.md           # 产品需求文档
-    ├── PROJECT_CONTEXT.md  # 本文档
-    ├── DATA_SCHEMA.md   # 数据结构文档
-    └── TEST_CHECKLIST.md   # 测试检查清单
+    ├── PRD.md
+    ├── PROJECT_CONTEXT.md
+    ├── DATA_SCHEMA.md
+    └── TEST_CHECKLIST.md
 ```
 
 ---
 
-## 3. 核心模块依赖关系
+## 4. 核心模块依赖
 
-```
-scheduler.py (定时任务编排)
-    ├── news_scraper.get_random_article()
+```text
+scheduler.py
+    ├── news_scraper.fetch_all_news()
+    ├── vocab_enhancer.generate_topic_labels()
     ├── word_extractor.analyze_text()
     └── vocab_enhancer.enhance_word/enhance_phrase()
 
-vocab_enhancer.py (AI 增强)
-    └── calls MiniMax API
+vocab_enhancer.py
+    └── DeepSeek 主用，MiniMax 备用
 
-articles.py (API 路由)
-    ├── news_scraper.get_two_random_articles()
-    └── user_difficulty_preferences (内存 dict)
+ai_chat.py
+    └── DeepSeek 主用，MiniMax 备用，本地 fallback
 
-favorites.py (API 路由)
-    └── 数据库 FavoriteWord/FavoritePhrase 表
+articles.py
+    └── 返回今日文章池、补处理词汇、补 topic 标签
 ```
 
 ---
 
-## 4. 关键配置
+## 5. 关键配置
 
-### config.py
+`.env` 关键项：
 
-| 配置项 | 默认值 | 说明 |
-|--------|--------|------|
-| DATABASE_URL | `sqlite:///data/english_learning.db` | 数据库路径 |
-| MINIMAX_API_KEY | (硬编码在 .env) | MiniMax API 密钥 |
-| PUSH_HOUR | 9 | 定时任务执行小时 |
-| PUSH_MINUTE | 30 | 定时任务执行分钟 |
-| SCHEDULER_TIMEZONE | Asia/Shanghai | 时区 |
+```env
+DATABASE_URL=sqlite:///./data/english_learning.db
 
-### NEWS_SOURCES
+DEEPSEEK_API_KEY=
+DEEPSEEK_MODEL=deepseek-v4-flash
+DEEPSEEK_BASE_URL=https://api.deepseek.com
 
-按分类配置了 BBC/ CNN/ Reuters RSS 源。如果某个 RSS 源失效，该分类的新闻会减少。
+MINIMAX_API_KEY=
+MINIMAX_GROUP_ID=
+MINIMAX_MODEL=minimax-m2.7
+MINIMAX_BASE_URL=https://api.minimax.chat/v1/text/chatcompletion_v2
 
----
+OPENAI_PROXY_URL=
+NEWS_PROXY_URL=http://127.0.0.1:7890
 
-## 5. 前端代理配置
+DAILY_ARTICLE_TARGET=5
+VOCAB_WORD_LIMIT=15
+VOCAB_PHRASE_LIMIT=3
+VOCAB_MIN_DIFFICULTY=CET4
 
-**vite.config.js**:
-```javascript
-proxy: {
-  '/api': 'http://localhost:8000'
-}
+SCHEDULER_TIMEZONE=Asia/Shanghai
+PUSH_HOUR=9
+PUSH_MINUTE=30
 ```
 
-如果后端端口从 8000 改为其他值，必须同步修改这里。
+代理策略：
+
+- AI 请求看 `OPENAI_PROXY_URL`
+- `OPENAI_PROXY_URL=` 为空时，Python requests 强制忽略系统代理并直连
+- 新闻抓取看 `NEWS_PROXY_URL`
+- BBC/CNN/Reuters 等 RSS 通常需要 `NEWS_PROXY_URL=http://127.0.0.1:7890`
 
 ---
 
-## 6. 内存状态（重启会丢失）
+## 6. 定时与启动补抓
 
-### user_difficulty_preferences (articles.py)
+每天默认 9:30 执行：
 
 ```python
-user_difficulty_preferences = {
-    "default": "CET4"
-}
+fetch_and_process_daily_news()
 ```
 
-存储用户选择的文章难度偏好，重启后恢复默认值。
+行为：
+
+1. 检查今天已经处理的文章数量
+2. 如果少于 `DAILY_ARTICLE_TARGET`，继续抓取并处理缺口
+3. 跳过已入库 URL，避免重复
+4. 每篇文章生成 topic 标签、词汇、短语
+
+后端启动时也会检查当天数量：
+
+- 达到 5 篇：跳过
+- 不足 5 篇：启动后约 2 秒自动补抓
 
 ---
 
 ## 7. 常见操作
 
-### 手动抓取新闻
+### 检查后端健康
 
 ```bash
-cd backend
-./venv/bin/python fetch_news.py
+curl http://127.0.0.1:8000/health
+```
+
+### 手动补抓今日文章
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/articles/fetch-now
+```
+
+### 补处理缺失 topic 标签
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/articles/process-missing-topic-labels
+```
+
+### 补处理缺失词汇
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/articles/process-missing-vocabulary
 ```
 
 ### 查看数据库内容
@@ -146,36 +209,37 @@ cd backend
 ./venv/bin/python check_db.py
 ```
 
-### 更新今日文章
-
-```bash
-cd backend
-./venv/bin/python update_today_article.py
-```
-
-### 重新处理词汇（修复缺失的 AI 释义）
-
-```bash
-cd backend
-./venv/bin/python migrate_vocab.py
-```
-
 ---
 
 ## 8. 前端路由
 
-| 页面 | 文件 |
-|------|------|
-| 文章选择页 | App.jsx |
-| 文章详情页 | pages/ArticleDetail.jsx |
-| 收藏列表 | pages/Favorites.jsx |
-| 复习页面 | pages/Review.jsx |
+| 页面 | 文件 | 说明 |
+|---|---|---|
+| 今日学习页 | `src/App.jsx` | 首页，topic 导航 + 文章 + 词汇 + AI tutor |
+| 文章详情页 | `src/pages/ArticleDetail.jsx` | 详情路由保留 |
+| 收藏列表 | `src/pages/Favorites.jsx` | 已收藏词汇和短语 |
+| 复习页 | `src/pages/Review.jsx` | flashcard 复习 |
 
 ---
 
-## 9. 环境要求
+## 9. 验证命令
 
-- Python 3.9+
-- Node.js 18+
-- SQLite (无需单独安装)
-- 代理: http://127.0.0.1:7890 (用于访问外网 RSS)
+后端测试：
+
+```bash
+cd backend
+./venv/bin/python -m pytest tests
+```
+
+前端构建：
+
+```bash
+cd frontend
+npm run build
+```
+
+当前已验证：
+
+- 后端测试 `44 passed`
+- 前端 `npm run build` 通过
+- `/api/articles/compare?limit=5` 返回 5 篇今日文章和 topic 标签

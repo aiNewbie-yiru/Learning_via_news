@@ -33,13 +33,19 @@ class TestGetWordDifficulty:
 
     def test_basic_words(self):
         """Basic词应该返回'Basic'"""
-        basic_test_words = ['the', 'have', 'people', 'year', 'way']
+        basic_test_words = ['the', 'have', 'people', 'year', 'way', 'clean', 'cleaner', 'super', 'far', 'fast', 'summer']
         for word in basic_test_words:
             assert self.extractor.get_word_difficulty(word) == "Basic", f"{word} should be Basic"
 
+    def test_non_basic_words_not_downgraded(self):
+        """高中或更高语域词不应该被Basic词库下沉"""
+        assert self.extractor.get_word_difficulty("academic") == "CET4"
+        assert self.extractor.get_word_difficulty("abnormal") == "CET6"
+        assert self.extractor.get_word_difficulty("abortion") is None
+
     def test_cet4_only_words(self):
         """CET4专有词（不在Basic中）应该返回'CET4'"""
-        cet4_only_words = ['abandon', 'academic', 'achieve', 'acquire', 'adequate']
+        cet4_only_words = ['abandon', 'academic', 'acquire', 'adequate', 'administration']
         for word in cet4_only_words:
             assert self.extractor.get_word_difficulty(word) == "CET4", f"{word} should be CET4"
 
@@ -66,10 +72,32 @@ class TestGetWordDifficulty:
         """大小写不敏感"""
         assert self.extractor.get_word_difficulty("ABERRANT") == "TOEFL"
         assert self.extractor.get_word_difficulty("AbAtE") == "TOEFL"
+        assert self.extractor.get_word_difficulty("Chancellor") == "CET6"
 
     def test_strip_whitespace(self):
         """应该去除首尾空白"""
         assert self.extractor.get_word_difficulty("  aberrant  ") == "TOEFL"
+
+    def test_inflected_news_words_use_base_form_difficulty(self):
+        """新闻高频词的复数和过去式应该按原形难度识别"""
+        expected = {
+            "reiterated": "CET6",
+            "allies": "CET6",
+            "intensified": "CET6",
+            "missiles": "CET6",
+            "drones": "CET6",
+            "bodycam": "CET6",
+            "enraging": "CET6",
+            "fatally": "CET6",
+            "footage": "CET6",
+            "handcuffed": "CET6",
+            "self-hatred": "TOEFL",
+            "stabbed": "CET6",
+            "tragic": "CET6",
+            "unprecedented": "TOEFL",
+        }
+        for word, difficulty in expected.items():
+            assert self.extractor.get_word_difficulty(word) == difficulty
 
 
 class TestExtractWords:
@@ -91,12 +119,18 @@ class TestExtractWords:
 
     def test_cet4_words_extracted_when_min_cet4(self):
         """min_difficulty=CET4时CET4词应该出现"""
-        text = "The academic discussion about ability and achievement"
+        text = "The academic administration discussed adequate acquisition plans"
         result = self.extractor.extract_words(text, min_difficulty="CET4")
         words = [item['word'] for item in result]
         assert 'academic' in words
-        assert 'ability' in words
-        assert 'achievement' in words
+        assert 'administration' in words
+        assert 'adequate' in words
+
+    def test_compulsory_basic_words_and_ability_excluded_by_default(self):
+        """义务教育/初中基础词不应作为默认生词出现"""
+        text = "Clean cleaner super far fast summer ability"
+        result = self.extractor.extract_words(text, min_difficulty="CET4")
+        assert result == []
 
     def test_min_difficulty_basic_includes_all(self):
         """min_difficulty=Basic应该包含所有非Basic的词"""
@@ -120,6 +154,13 @@ class TestExtractWords:
         assert 'academic' not in words
         assert 'basic' not in words
         assert 'ability' not in words
+
+    def test_compulsory_basic_words_excluded_by_default(self):
+        """义务教育阶段基础词默认不应该出现在Words里"""
+        text = "Clean cleaner super far fast summer"
+        result = self.extractor.extract_words(text, min_difficulty="CET4")
+        words = [item['word'] for item in result]
+        assert words == []
 
     def test_word_count_tracking(self):
         """应该正确统计词频"""
@@ -162,6 +203,32 @@ class TestExtractWords:
         words_with_roots = [item for item in result if 'roots' in item]
         assert len(words_with_roots) > 0, f"Expected words with roots, got {[r['word'] for r in result]}"
 
+    def test_news_article_complex_words_are_extracted(self):
+        """新闻文章中的核心复杂词应该进入候选池"""
+        text = (
+            "The leaders reiterated the need for allies after Chancellor Merz spoke. "
+            "Attacks intensified as missiles and drones created unprecedented pressure. "
+            "The tragic, enraging bodycam footage showed a fatally stabbed man in handcuffs. "
+            "The phrase self-hatred appeared in the article."
+        )
+        result = self.extractor.extract_words(text, min_difficulty="CET4")
+        words = {item['word']: item['difficulty'] for item in result}
+
+        assert words["reiterated"] == "CET6"
+        assert words["allies"] == "CET6"
+        assert words["chancellor"] == "CET6"
+        assert words["intensified"] == "CET6"
+        assert words["missiles"] == "CET6"
+        assert words["drones"] == "CET6"
+        assert words["tragic"] == "CET6"
+        assert words["enraging"] == "CET6"
+        assert words["bodycam"] == "CET6"
+        assert words["footage"] == "CET6"
+        assert words["fatally"] == "CET6"
+        assert words["stabbed"] == "CET6"
+        assert words["self-hatred"] == "TOEFL"
+        assert words["unprecedented"] == "TOEFL"
+
 
 class TestExtractPhrases:
     """短语和习语提取测试"""
@@ -192,6 +259,13 @@ class TestExtractPhrases:
         phrase_types = {item['phrase']: item['type'] for item in result}
         assert phrase_types.get('break a leg') == 'idiom'
         assert phrase_types.get('come to terms with') == 'phrase'
+
+    def test_news_phrase_whitelist_extraction(self):
+        """新闻短语白名单中的表达应该被提取"""
+        text = "European elites had stood their ground against the politics of self-hatred."
+        result = self.extractor.extract_phrases(text)
+        phrases = [item['phrase'] for item in result]
+        assert 'stood their ground against' in phrases
 
     def test_no_phrase_in_text(self):
         """文本中没有短语时返回空列表"""
